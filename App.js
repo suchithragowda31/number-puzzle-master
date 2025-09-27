@@ -55,7 +55,7 @@ const LEVELS = {
 };
 
 // Check if path exists between two cells (including diagonal)
-const hasValidPath = (grid, pos1, pos2) => {
+const hasValidPath = (grid, matchedCells, pos1, pos2) => {
   const [r1, c1] = pos1;
   const [r2, c2] = pos2;
   
@@ -63,13 +63,13 @@ const hasValidPath = (grid, pos1, pos2) => {
   if (r1 === r2 && c1 === c2) return false;
   
   // Direct line check (horizontal, vertical, diagonal)
-  if (isDirectLine(grid, pos1, pos2)) return true;
+  if (isDirectLine(grid, matchedCells, pos1, pos2)) return true;
   
   // One turn path check
-  return hasOneTurnPath(grid, pos1, pos2);
+  return hasOneTurnPath(grid, matchedCells, pos1, pos2);
 };
 
-const isDirectLine = (grid, pos1, pos2) => {
+const isDirectLine = (grid, matchedCells, pos1, pos2) => {
   const [r1, c1] = pos1;
   const [r2, c2] = pos2;
   
@@ -88,31 +88,34 @@ const isDirectLine = (grid, pos1, pos2) => {
     const checkR = r1 + Math.round(stepR * i);
     const checkC = c1 + Math.round(stepC * i);
     
-    if (grid[checkR] && grid[checkR][checkC] !== null) {
-      return false; // Path blocked
+    if (grid[checkR] && grid[checkR][checkC] !== null && 
+        !matchedCells.has(`${checkR}-${checkC}`)) {
+      return false; // Path blocked by unmatched cell
     }
   }
   
   return true;
 };
 
-const hasOneTurnPath = (grid, pos1, pos2) => {
+const hasOneTurnPath = (grid, matchedCells, pos1, pos2) => {
   const [r1, c1] = pos1;
   const [r2, c2] = pos2;
   
   // Try corner at (r1, c2)
   const corner1 = [r1, c2];
-  if ((!grid[corner1[0]] || grid[corner1[0]][corner1[1]] === null) &&
-      isDirectLine(grid, pos1, corner1) && 
-      isDirectLine(grid, corner1, pos2)) {
+  if ((!grid[corner1[0]] || grid[corner1[0]][corner1[1]] === null || 
+       matchedCells.has(`${corner1[0]}-${corner1[1]}`)) &&
+      isDirectLine(grid, matchedCells, pos1, corner1) && 
+      isDirectLine(grid, matchedCells, corner1, pos2)) {
     return true;
   }
   
   // Try corner at (r2, c1)  
   const corner2 = [r2, c1];
-  if ((!grid[corner2[0]] || grid[corner2[0]][corner2[1]] === null) &&
-      isDirectLine(grid, pos1, corner2) && 
-      isDirectLine(grid, corner2, pos2)) {
+  if ((!grid[corner2[0]] || grid[corner2[0]][corner2[1]] === null || 
+       matchedCells.has(`${corner2[0]}-${corner2[1]}`)) &&
+      isDirectLine(grid, matchedCells, pos1, corner2) && 
+      isDirectLine(grid, matchedCells, corner2, pos2)) {
     return true;
   }
   
@@ -120,16 +123,16 @@ const hasOneTurnPath = (grid, pos1, pos2) => {
 };
 
 // Find possible matches for hints
-const findPossibleMatches = (grid) => {
+const findPossibleMatches = (grid, matchedCells) => {
   const matches = [];
   
   for (let r1 = 0; r1 < grid.length; r1++) {
     for (let c1 = 0; c1 < grid[r1].length; c1++) {
-      if (grid[r1][c1] === null) continue;
+      if (grid[r1][c1] === null || matchedCells.has(`${r1}-${c1}`)) continue;
       
       for (let r2 = 0; r2 < grid.length; r2++) {
         for (let c2 = 0; c2 < grid[r2].length; c2++) {
-          if (grid[r2][c2] === null) continue;
+          if (grid[r2][c2] === null || matchedCells.has(`${r2}-${c2}`)) continue;
           if (r1 === r2 && c1 === c2) continue;
           
           const num1 = grid[r1][c1];
@@ -138,7 +141,7 @@ const findPossibleMatches = (grid) => {
           // Check if numbers match
           if (num1 === num2 || num1 + num2 === 10) {
             // Check if path exists
-            if (hasValidPath(grid, [r1, c1], [r2, c2])) {
+            if (hasValidPath(grid, matchedCells, [r1, c1], [r2, c2])) {
               matches.push([[r1, c1], [r2, c2]]);
             }
           }
@@ -150,11 +153,13 @@ const findPossibleMatches = (grid) => {
   return matches;
 };
 
-const GameCell = ({ number, row, col, isSelected, isHinted, onPress, animationType }) => {
+const GameCell = ({ number, row, col, isSelected, isHinted, isMatched, onPress, animationType }) => {
   const animatedValue = useRef(new Animated.Value(1)).current;
   const shakeAnimation = useRef(new Animated.Value(0)).current;
 
   const handlePress = () => {
+    if (isMatched) return; // Don't allow interaction with matched cells
+    
     Animated.sequence([
       Animated.timing(animatedValue, { toValue: 0.9, duration: 100, useNativeDriver: true }),
       Animated.timing(animatedValue, { toValue: 1, duration: 100, useNativeDriver: true }),
@@ -182,11 +187,12 @@ const GameCell = ({ number, row, col, isSelected, isHinted, onPress, animationTy
         styles.cell,
         isSelected && styles.selectedCell,
         isHinted && styles.hintedCell,
+        isMatched && styles.matchedCell,
         { transform: [{ scale: animatedValue }, { translateX: shakeAnimation }] }
       ]}
     >
-      <TouchableOpacity onPress={handlePress} style={styles.cellTouchable}>
-        <Text style={styles.cellText}>{number}</Text>
+      <TouchableOpacity onPress={handlePress} style={styles.cellTouchable} disabled={isMatched}>
+        <Text style={[styles.cellText, isMatched && styles.matchedCellText]}>{number}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -196,6 +202,7 @@ export default function App() {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [selectedCell, setSelectedCell] = useState(null);
   const [gridData, setGridData] = useState([]);
+  const [matchedCells, setMatchedCells] = useState(new Set()); // Track matched cells
   const [score, setScore] = useState(0);
   const [matches, setMatches] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
@@ -228,7 +235,7 @@ export default function App() {
   // Check for no moves available
   useEffect(() => {
     if (gameActive && gameStarted && !showNoMovesDialog) {
-      const possibleMatches = findPossibleMatches(gridData);
+      const possibleMatches = findPossibleMatches(gridData, matchedCells);
       const levelConfig = LEVELS[currentLevel];
       
       // Check if no moves and no more rows can be added
@@ -236,7 +243,7 @@ export default function App() {
         setShowNoMovesDialog(true);
       }
     }
-  }, [gridData, gameActive, gameStarted, addedRows, currentLevel, showNoMovesDialog]);
+  }, [gridData, matchedCells, gameActive, gameStarted, addedRows, currentLevel, showNoMovesDialog]);
 
   // Check game over
   useEffect(() => {
@@ -253,7 +260,7 @@ export default function App() {
       setTotalScore(prev => prev + score);
       
       if (currentLevel === 3) {
-        // Show congratulations screen after completing level 3
+        
         setTimeout(() => setShowCongratulations(true), 1000);
       } else {
         setTimeout(() => nextLevel(), 1000);
@@ -262,7 +269,8 @@ export default function App() {
   }, [matches, currentLevel, score]);
 
   const handleCellPress = (row, col) => {
-    if (!gameActive || !gameStarted || gridData[row][col] === null) return;
+    if (!gameActive || !gameStarted || gridData[row][col] === null || 
+        matchedCells.has(`${row}-${col}`)) return;
     
     // Clear hints
     setHintedCells(new Set());
@@ -283,12 +291,12 @@ export default function App() {
       // Check match rules
       const canMatch = num1 === num2 || num1 + num2 === 10;
       
-      if (canMatch && hasValidPath(gridData, [prevRow, prevCol], [row, col])) {
-        // Valid match
-        const newGrid = [...gridData];
-        newGrid[prevRow][prevCol] = null;
-        newGrid[row][col] = null;
-        setGridData(newGrid);
+      if (canMatch && hasValidPath(gridData, matchedCells, [prevRow, prevCol], [row, col])) {
+        // Valid match 
+        const newMatchedCells = new Set(matchedCells);
+        newMatchedCells.add(`${prevRow}-${prevCol}`);
+        newMatchedCells.add(`${row}-${col}`);
+        setMatchedCells(newMatchedCells);
         
         setScore(prev => prev + 10);
         setMatches(prev => prev + 1);
@@ -316,7 +324,7 @@ export default function App() {
     const newRow = [];
     
     for (let i = 0; i < 4; i++) {
-      if (Math.random() < 0.7 && existingNums.length > 0) { // Increased chance to 70%
+      if (Math.random() < 0.7 && existingNums.length > 0) {
         const randomNum = existingNums[Math.floor(Math.random() * existingNums.length)];
         // Higher chance of adding same number or complement to 10
         if (Math.random() < 0.6) {
@@ -344,7 +352,7 @@ export default function App() {
   const showHint = () => {
     if (!gameActive || !gameStarted) return;
     
-    const possibleMatches = findPossibleMatches(gridData);
+    const possibleMatches = findPossibleMatches(gridData, matchedCells);
     if (possibleMatches.length > 0) {
       const randomMatch = possibleMatches[Math.floor(Math.random() * possibleMatches.length)];
       const [[r1, c1], [r2, c2]] = randomMatch;
@@ -365,6 +373,7 @@ export default function App() {
     const levelConfig = LEVELS[currentLevel];
     setSelectedCell(null);
     setGridData(levelConfig.initialGrid.map(row => [...row]));
+    setMatchedCells(new Set()); // Reset matched cells
     setScore(0);
     setMatches(0);
     setTimeLeft(levelConfig.timeLimit);
@@ -565,6 +574,7 @@ export default function App() {
                             col={colIndex}
                             isSelected={selectedCell?.row === rowIndex && selectedCell?.col === colIndex}
                             isHinted={hintedCells.has(`${rowIndex}-${colIndex}`)}
+                            isMatched={matchedCells.has(`${rowIndex}-${colIndex}`)}
                             onPress={handleCellPress}
                             animationType={animatingCells.has(`${rowIndex}-${colIndex}`) ? 'shake' : null}
                           />
@@ -859,10 +869,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFD700',
     borderColor: '#FFA500',
   },
+  matchedCell: {
+    backgroundColor: '#2a2a2a',
+    borderColor: '#555',
+    opacity: 0.4,
+  },
   cellText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  matchedCellText: {
+    color: '#888',
   },
   emptyCell: {
     width: 50,
