@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "NumberPuzzleGame",
-    "slug": "NumberPuzzleGame",
-    "version": "1.0.0",
+    "name": "Match Master",
+    "slug": "Match Master",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,9 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.suchithra01.matchmaster" 
     },
     "android": {
+      "versionCode": 2,   
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
