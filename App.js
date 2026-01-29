@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, StatusBar, Platform, Text, TouchableOpacity, ScrollView, Modal, Alert } from 'react-native';
+import { StyleSheet, View, StatusBar, Platform, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // SERVICES
@@ -14,6 +14,7 @@ import GameStats from './components/GameStats';
 import GameControls from './components/GameControls';
 import GameGrid from './components/GameGrid';
 import StartScreen from './components/screens/StartScreen';
+import CustomAlert from './components/CustomAlert';
 
 const levelManager = new LevelManager(new NumberMatchStrategy());
 
@@ -32,6 +33,7 @@ export default function App() {
   const [hintedCells, setHintedCells] = useState(new Set());
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [showLevelSelector, setShowLevelSelector] = useState(false);
+  const [showNoMatchAlert, setShowNoMatchAlert] = useState(false);
   
   const scrollViewRef = useRef(null);
   const levelConfig = levelManager.getCurrentLevelConfig();
@@ -117,11 +119,7 @@ export default function App() {
     const possibleMatches = findPossibleMatches(gridData, matchedCells);
     
     if (possibleMatches.length === 0) {
-      Alert.alert(
-        "No Matches Available",
-        "There are currently no possible matches on the board. Try adding a new row!",
-        [{ text: "OK" }]
-      );
+      setShowNoMatchAlert(true);
       return;
     }
     
@@ -291,6 +289,14 @@ export default function App() {
             </View>
           </Modal>
           */}
+
+          {/* Custom Alert for No Matches */}
+          <CustomAlert
+            visible={showNoMatchAlert}
+            title="No Matches Available"
+            message="There are currently no possible matches on the board. Try adding a new row!"
+            onClose={() => setShowNoMatchAlert(false)}
+          />
         </SafeAreaView>
       </View>
     </SafeAreaProvider>
