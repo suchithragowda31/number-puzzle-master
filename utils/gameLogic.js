@@ -1,6 +1,5 @@
 /**
  * REUSABLE GAME LOGIC UTILITIES
- * Pure functions - no side effects
  * Grid System: 7 columns × 9 rows
  */
 export const GRID_COLUMNS = 7; // Number of columns in the grid
@@ -87,10 +86,7 @@ export const formatTime = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-/**
- * UPDATED: Add a new row after the last existing row in the grid
- * This ensures rows are added sequentially, including after grey (matched) rows
- */
+
 export const addNewRow = (grid, matchedCells) => {
   const existingNums = grid.flat().filter(n => n !== null);
   const newRow = [];

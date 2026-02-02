@@ -61,7 +61,7 @@ export class NumberMatchStrategy extends LevelStrategy {
       grid.push(row);
     }
     
-    // Add a few empty rows for initial buffer (optional)
+    
     // This gives space for the first few "Add Row" actions
     const emptyRowBuffer = 3;
     for (let i = 0; i < emptyRowBuffer; i++) {
